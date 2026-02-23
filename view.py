@@ -259,6 +259,7 @@ def gerar_pdf():
 
         pdf.output("livro.pdf")
         
-        return jsonify({'message': 'PDF gerado com sucesso'}), 200
+        return send_file("livro.pdf", as_attachment=True)
     except Exception as e:
+
         return jsonify({'message': 'Erro ao gerar o PDF'}), 500
