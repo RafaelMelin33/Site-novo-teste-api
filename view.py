@@ -1,9 +1,48 @@
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file, Response
 from main import app, con
 import fpdf
+import os
+import pygal
+import threading
 from flask_bcrypt import generate_password_hash, check_password_hash
 
 from functions import *
+
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
+
+@app.route('/enviar_email', methods=['POST'])
+def enviar_email():
+    dados = request.get_json()
+    destinatario = dados.get('to')
+    assunto = dados.get('subject')
+    mensagem = dados.get('message')
+    thread = threading.Thread(target=enviando_email, args=(destinatario, assunto, mensagem))
+    thread.start()
+
+    return jsonify({'message': 'Email enviado com sucesso'}), 200
+
+@app.route('/grafico')
+def grafico():
+    cur = con.cursor()
+    try:
+        cur.execute("""SELECT ANO_PUBLICACAO, COUNT(*)
+                    FROM LIVROS
+                    GROUP BY ANO_PUBLICACAO
+                    ORDER BY ANO_PUBLICACAO""")
+        resultados = cur.fetchall()
+        cur.close()
+
+        grafico = pygal.Bar()
+        grafico.title = 'Livros por ano'
+
+        for i in resultados:
+            grafico.add(str(i[0]), i[1])
+        return Response(grafico.render(), mimetype='image/svg+xml')
+    except Exception as e:
+        print(f'Erro: {e}')
+    finally:
+        cur.close()
 
 @app.route('/listar_livro', methods=['GET'])
 def listar_livro():
@@ -28,18 +67,30 @@ def listar_livro():
 @app.route('/criar_livro', methods=['POST'])
 def criar_livro():
     try:
-        data = request.get_json()
-        titulo = data.get('titulo')
-        autor = data.get('autor')
-        ano_publicacao = data.get('ano_publicacao')
+        titulo = request.form.get('titulo')
+        autor = request.form.get('autor')
+        ano_publicacao = request.form.get('ano_publicacao')
+        imagem = request.files.get('imagem')
+
         cur = con.cursor()
         cur.execute('SELECT 1 FROM LIVROS WHERE TITULO = ?', (titulo,))
         if cur.fetchone():
             return jsonify({'error': 'Livro já cadastrado'}), 400
         else:
             cur.execute("""INSERT INTO LIVROS (TITULO, AUTOR, ANO_PUBLICACAO)
-                        VALUES (?, ?, ?)""", (titulo, autor, ano_publicacao))
+                        VALUES (?, ?, ?) RETURNING ID_LIVRO """, (titulo, autor, ano_publicacao))
+            codigo_livro = cur.fetchone()[0]
             con.commit()
+
+            caminho_imagem = None
+
+            if imagem:
+                nome_imagem = f"{codigo_livro}.jpg"
+                caminho_imagem_destino = os.path.join(app.config['UPLOAD_FOLDER'], "Livros")
+                os.makedirs(caminho_imagem_destino, exist_ok=True)
+                caminho_imagem = os.path.join(caminho_imagem_destino, nome_imagem)
+                imagem.save(caminho_imagem)
+
         return jsonify({
             'message': 'Livro criado com sucesso',
             'livro': {
@@ -258,8 +309,7 @@ def gerar_pdf():
             pdf.y += 10
 
         pdf.output("livro.pdf")
-        
+
         return send_file("livro.pdf", as_attachment=True)
     except Exception as e:
-
         return jsonify({'message': 'Erro ao gerar o PDF'}), 500
