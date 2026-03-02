@@ -46,6 +46,21 @@ def grafico():
 
 @app.route('/listar_livro', methods=['GET'])
 def listar_livro():
+    token = request.headers.get('Autorization')
+    if not token:
+        return jsonify({'mensagem': 'Token de autenticação necessário'}), 401
+
+    token = remover_bearer(token)
+
+    try:
+        payload = jwt.decode(token,senha_secreta,algorithms='HS256')
+        id_usuario = payload['id_usuario']
+        print(id_usuario)
+    except jwt.ExpiredSignatureError:
+        return jsonify({'mensagem': 'Token expirado'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'mensagem': 'Token invalido'}), 401
+
     try:
         cur = con.cursor()
         cur.execute('SELECT ID_LIVRO, TITULO, AUTOR, ANO_PUBLICACAO FROM LIVROS')
@@ -196,10 +211,13 @@ def login():
 
         cur.execute('SELECT 1 FROM USUARIOS WHERE EMAIL = ?', (email,))
         if cur.fetchone():
-            cur.execute('SELECT SENHA FROM USUARIOS WHERE EMAIL = ?', (email,))
-            senha_armazenada = cur.fetchone()[0]
+            cur.execute('SELECT SENHA, ID_USUARIO FROM USUARIOS WHERE EMAIL = ?', (email,))
+            infos = cur.fetchone()
+            senha_armazenada = infos[0]
+            id_usuario = infos[1]
             if check_password_hash(senha_armazenada, senha):
-                return jsonify({'message': 'Login bem-sucedido'}), 200
+                token = gerar_token(id_usuario)
+                return jsonify({'message': 'Login bem-sucedido', 'token' : token}), 200
             else:
                 cur.execute('SELECT TENTATIVAS FROM USUARIOS WHERE EMAIL = ?', (email,))
                 tentativas = cur.fetchone()[0]

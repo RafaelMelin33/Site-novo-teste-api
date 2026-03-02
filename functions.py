@@ -1,7 +1,28 @@
+import datetime
+
 from flask_bcrypt import generate_password_hash, check_password_hash
 import threading
 import smtplib
 from email.mime.text import MIMEText
+import jwt
+import datetime
+from main import app
+
+senha_secreta = app.config['SECRET_KEY']
+
+def gerar_token(id_usuario):
+    payload = {
+        'id_usuario': id_usuario,
+        'timestamp': datetime.datetime.utcnow().isoformat()
+    }
+    token = jwt.encode(payload, senha_secreta, algorithm='HS256')
+    return token
+
+def remover_bearer(token):
+    if token.startswith('Bearer '):
+        return token[len('Bearer '):]
+    else:
+        return token
 
 def valida_senha(senha):
     qtdCaracteres = False
@@ -30,8 +51,8 @@ def valida_senha(senha):
         return False
 
 def enviando_email(destinatario, assunto, mensagem):
-    user = "laisrscurso@gmail.com"
-    senha = "fkvh zoyg pujv zpdp"
+    user = "rafaelmelin50@gmail.com"
+    senha = "axap frrt riir zklo"
     msg = MIMEText(mensagem)
     msg['Subject'] = assunto
     msg['From'] = user
