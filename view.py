@@ -46,7 +46,7 @@ def grafico():
 
 @app.route('/listar_livro', methods=['GET'])
 def listar_livro():
-    token = request.headers.get('Autorization')
+    token = request.headers.get('Authorization')
     if not token:
         return jsonify({'mensagem': 'Token de autenticação necessário'}), 401
 
