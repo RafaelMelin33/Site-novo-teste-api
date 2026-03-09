@@ -4,7 +4,7 @@ SECRET_KEY = 'minhasenhasupersecretacomçe~´`^antihackeramericanoerusso'
 DEBUG = True
 
 DB_HOST = 'localhost'
-DB_NAME = r'C:\Users\Aluno\Desktop\rafael\BANCO.FDB'
+DB_NAME = r'C:\Users\Aluno\Desktop\APIBibliotecaRafael\BANCO.FDB'
 
 DB_USER = 'SYSDBA'
 DB_PASSWORD = 'sysdba'

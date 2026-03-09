@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_file, Response
+from flask import Flask, jsonify, request, send_file, Response, make_response
 from main import app, con
 import fpdf
 import os
@@ -46,7 +46,8 @@ def grafico():
 
 @app.route('/listar_livro', methods=['GET'])
 def listar_livro():
-    token = request.headers.get('Authorization')
+    # token = request.headers.get('Authorization')
+    token = request.cookies.get('access_token')
     if not token:
         return jsonify({'mensagem': 'Token de autenticação necessário'}), 401
 
@@ -208,7 +209,6 @@ def login():
         senha = data.get('senha')
 
         cur = con.cursor()
-
         cur.execute('SELECT 1 FROM USUARIOS WHERE EMAIL = ?', (email,))
         if cur.fetchone():
             cur.execute('SELECT SENHA, ID_USUARIO FROM USUARIOS WHERE EMAIL = ?', (email,))
@@ -217,7 +217,13 @@ def login():
             id_usuario = infos[1]
             if check_password_hash(senha_armazenada, senha):
                 token = gerar_token(id_usuario)
-                return jsonify({'message': 'Login bem-sucedido', 'token' : token}), 200
+                resp = make_response(jsonify({'message': 'Login bem-sucedido'}), 200)
+                resp.set_cookie('access_token', token,
+                                httponly=True,
+                                secure=False,
+                                samesite='Lax',
+                                path="/",
+                                max_age=3600)
             else:
                 cur.execute('SELECT TENTATIVAS FROM USUARIOS WHERE EMAIL = ?', (email,))
                 tentativas = cur.fetchone()[0]
@@ -231,7 +237,7 @@ def login():
         else:
             return jsonify({'error': 'Usuário não encontrado'}), 404
     except Exception as e:
-        return jsonify({'message': 'Erro ao realizar o login'}), 500
+        return jsonify({'message': f'Erro ao realizar o login {e}'}), 500
     finally:
         cur.close()
 
