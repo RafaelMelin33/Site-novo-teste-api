@@ -50,8 +50,7 @@ def listar_livro():
     token = request.cookies.get('access_token')
     if not token:
         return jsonify({'mensagem': 'Token de autenticação necessário'}), 401
-
-    token = remover_bearer(token)
+    # token = remover_bearer(token)
 
     try:
         payload = jwt.decode(token,senha_secreta,algorithms='HS256')
@@ -224,6 +223,7 @@ def login():
                                 samesite='Lax',
                                 path="/",
                                 max_age=3600)
+                return resp
             else:
                 cur.execute('SELECT TENTATIVAS FROM USUARIOS WHERE EMAIL = ?', (email,))
                 tentativas = cur.fetchone()[0]
